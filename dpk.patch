@@ -1,0 +1,416 @@
+﻿Left base folder: C:\temp\8.57.04\setup\puppet\production
+Right base folder: C:\dan\gitlab\dpk
+diff -r modules\pt_config\files\pt_appserver\appserver_win_service.rb.erb modules\pt_config\files\pt_appserver\appserver_win_service.rb.erb
+17a18,20
+> 
+>       ENV["PS_HOME"] = "<%= ps_home %>"
+>       ENV["PS_CFG_HOME"] = "<%= ps_cfg_home %>"
+33a37,39
+> 
+>        ENV["PS_HOME"] = "<%= ps_home %>"
+>        ENV["PS_CFG_HOME"] = "<%= ps_cfg_home %>"
+diff -r modules\pt_config\files\pt_pia\pia_win_service.rb.erb modules\pt_config\files\pt_pia\pia_win_service.rb.erb
+17a18
+>       ENV["PS_CFG_HOME"] = "<%= ps_cfg_home %>"
+33a35
+>        ENV["PS_CFG_HOME"] = "<%= ps_cfg_home %>"
+diff -r modules\pt_config\files\pt_prcs\prcs_win_service.rb.erb modules\pt_config\files\pt_prcs\prcs_win_service.rb.erb
+17a18,19
+>       ENV["PS_HOME"] = "<%= ps_home %>"
+>       ENV["PS_CFG_HOME"] = "<%= ps_cfg_home %>"
+33a36,37
+>        ENV["PS_HOME"] = "<%= ps_home %>"
+>        ENV["PS_CFG_HOME"] = "<%= ps_cfg_home %>"
+diff -r modules\pt_config\lib\pt_comp_utils\webserver.rb modules\pt_config\lib\pt_comp_utils\webserver.rb
+215c215,217
+<       elsif Facter.value(:kernel) == 'AIX' or 
+---
+>         #DJI
+>         shell_suffix = 'cmd'
+>      elsif Facter.value(:kernel) == 'AIX' or 
+225a228,229
+>         #DJI
+>         shell_suffix = 'sh'
+244,245c248,252
+<       wl_status_cmd = "#{cmd_prefix} java #{java_opts} weblogic.WLST " + \
+<                     "-skipWLSModuleScanning #{wl_script_file} #{cmd_suffix}"
+---
+>       #DJI
+>       # wl_status_cmd = "#{cmd_prefix} java #{java_opts} weblogic.WLST " + \
+>       #               "-skipWLSModuleScanning #{wl_script_file} #{cmd_suffix}"
+>       wlst_cmd = File.join(bea_home, 'oracle_common', 'common', 'bin', "wlst.#{shell_suffix}")
+>       wl_status_cmd = "#{cmd_prefix} #{wlst_cmd} #{wl_script_file} #{cmd_suffix}"
+diff -r modules\pt_config\lib\puppet\provider\pt_password\password.rb modules\pt_config\lib\puppet\provider\pt_password\password.rb
+34,41c34,43
+<     db_access_pwd = resource[:db_access_pwd]
+< 
+<     db_access_id = change_db_access_pwd
+<     if pia_domain_number <= 1
+<       log_loc = create_dms_log_file
+<       dms_content_array = Array.new
+<       dms_content_array << "set log #{log_loc}; "
+<       dms_content_array << "CHANGE_ACCESS_PASSWORD SYSADM1 " + db_access_pwd
+---
+>     # DJI - Don't reset SYSADM password - requires PDB
+>     # db_access_pwd = resource[:db_access_pwd]
+>     # db_access_id = change_db_access_pwd
+>     
+>     # DJI - Dont reset access password, can do when PDB is implemented  
+>     # if pia_domain_number <= 1
+>     #   log_loc = create_dms_log_file
+>     #   dms_content_array = Array.new
+>     #   dms_content_array << "set log #{log_loc}; "
+>     #   dms_content_array << "CHANGE_ACCESS_PASSWORD SYSADM1 " + db_access_pwd
+43,46c45,48
+<       dms_location = create_dms_script(dms_content_array)
+<       output, status = run_dms_script(dms_location, db_access_id)
+<       Puppet.debug('Output of the executed DMS: ' + output.gsub(db_access_pwd, '****'))
+<       dms_run_log = File.read(log_loc)
+---
+>     #   dms_location = create_dms_script(dms_content_array)
+>     #   output, status = run_dms_script(dms_location, db_access_id)
+>     #   Puppet.debug('Output of the executed DMS: ' + output.gsub(db_access_pwd, '****'))
+>     #   dms_run_log = File.read(log_loc)
+48,54c50,56
+<       if status == 0 and (dms_run_log.include?'Successful completion' and !dms_run_log.include?'Unsuccessful completion')
+<         Puppet.notice "successfully changed the DB Access password for #{db_access_id}"
+<       else
+<         fail("Could not change the DB Access - #{db_access_id} Password. DMS has Failed")
+<       end
+<       FileUtils.remove_file(log_loc, :force => true)
+<     end
+---
+>     #   if status == 0 and (dms_run_log.include?'Successful completion' and !dms_run_log.include?'Unsuccessful completion')
+>     #     Puppet.notice "successfully changed the DB Access password for #{db_access_id}"
+>     #   else
+>     #     fail("Could not change the DB Access - #{db_access_id} Password. DMS has Failed")
+>     #   end
+>     #   FileUtils.remove_file(log_loc, :force => true)
+>     # end
+140c142,143
+<       access_sql.puts("ALTER SESSION SET CONTAINER = #{database_name};")
+---
+>       # DJI - Not using CDB
+>       # access_sql.puts("ALTER SESSION SET CONTAINER = #{database_name};")
+146c149,151
+<       sql_output = execute_pdb_sql_command_file(oracle_home_dir, database_name, access_sql_path, oracle_user, db_admin_pwd)
+---
+>       # DJI - Use regular SQL and not PDB SQL
+>       # sql_output = execute_pdb_sql_command_file(oracle_home_dir, database_name, access_sql_path, oracle_user, db_admin_pwd)
+>       sql_output = execute_sql_command_file(oracle_home_dir, database_name, access_sql_path, oracle_user)
+159c164,165
+<       sql_qry.puts("ALTER SESSION SET CONTAINER = #{database_name};")
+---
+>       # DJI - Not using PDB
+>       # sql_qry.puts("ALTER SESSION SET CONTAINER = #{database_name};")
+163c169,171
+<       sql_output = execute_pdb_sql_command_file(oracle_home_dir, database_name, sql_path, oracle_user, db_admin_pwd)
+---
+>       # DJI - Not using PDB
+>       # sql_output = execute_pdb_sql_command_file(oracle_home_dir, database_name, sql_path, oracle_user, db_admin_pwd)
+>       sql_output = execute_sql_command_file(oracle_home_dir, database_name, sql_path, oracle_user)
+diff -r modules\pt_config\lib\puppet\type\pt_acm_plugin.rb modules\pt_config\lib\puppet\type\pt_acm_plugin.rb
+75,79c75,81
+<               if ['pwd', 'pass'].any? {|var| prop_item.split('=')[0].include? var}
+<                 Puppet.debug("Got the property: #{prop_item.gsub(prop_item.split('=')[1], '*****')}")
+<               else
+<                 Puppet.debug("Got the property: #{prop_item}")
+<               end
+---
+>               # DJI - 6/6/18 - .include? was causing errors when trying to hide passwords
+>               #  The provider acm_plugin.rb will runs the same code
+>               # if ['pwd', 'pass'].any? {|var| prop_item.split('=')[0].include? var}
+>               #   Puppet.debug("Got the property: #{prop_item.gsub(prop_item.split('=')[1], '*****')}")
+>               # else
+>               #   Puppet.debug("Got the property: #{prop_item}")
+>               # end
+diff -r modules\pt_config\lib\puppet\type\pt_prcs_domain.rb modules\pt_config\lib\puppet\type\pt_prcs_domain.rb
+57c57,59
+<           [ "MSTRSRV", "APPENG", "KIOSK", "DOMAIN_GW", "SERVER_EVENTS" ]
+---
+>           # DJI Fix this bug... still
+>           # [ "MSTRSRV", "APPENG", "KIOSK", "DOMAIN_GW", "SERVER_EVENTS" ]
+>           [ "MSTRSRV", "APPENG", "PPM", "DOMAIN_GW", "SERVER_EVENTS" ]
+diff -r modules\pt_profile\manifests\pt_appserver.pp modules\pt_profile\manifests\pt_appserver.pp
+59c59
+<   $appserver_domain_list = hiera('appserver_domain_list')
+---
+>   $appserver_domain_list = hiera_hash('appserver_domain_list')
+diff -r modules\pt_profile\manifests\pt_cloudmanager.pp modules\pt_profile\manifests\pt_cloudmanager.pp
+29c29
+<   $prcs_domain_name   = hiera('prcs_domain_name')
+---
+>   $prcs_domain_name   = hiera_hash('prcs_domain_name')
+diff -r modules\pt_profile\manifests\pt_cloudmanager_deployment.pp modules\pt_profile\manifests\pt_cloudmanager_deployment.pp
+30c30
+<   $prcs_domain_name   = hiera('prcs_domain_name')
+---
+>   $prcs_domain_name   = hiera_hash('prcs_domain_name')
+diff -r modules\pt_profile\manifests\pt_domain_boot.pp modules\pt_profile\manifests\pt_domain_boot.pp
+68,69c68,71
+<   if ($domain_type in [ 'all', 'appserver', 'appbatch']) {
+<     $appserver_domain_list = hiera('appserver_domain_list')
+---
+>   # DJI use ps_role instead of domain_type
+>   if $::ps_role in ['app'] {
+>   # if ($domain_type in [ 'all', 'appserver', 'appbatch']) {
+>     $appserver_domain_list = hiera_hash('appserver_domain_list')
+94,95c96,99
+<   if ($domain_type in [ 'all', 'prcs', 'appbatch']) {
+<     $prcs_domain_list = hiera('prcs_domain_list')
+---
+>   # DJI use ps_role instead of domain_type
+>   if $::ps_role in ['prcs'] {
+>   # if ($domain_type in [ 'all', 'prcs', 'appbatch']) {
+>     $prcs_domain_list = hiera_hash('prcs_domain_list')
+120,121c124,127
+<   if ($domain_type in [ 'all', 'pia']) {
+<     $pia_domain_list = hiera('pia_domain_list')
+---
+>   # DJI Use ps_role instead of domain_type
+>   if $::ps_role in ['app', 'dmz'] {
+>   # if ($domain_type in [ 'all', 'pia']) {
+>     $pia_domain_list = hiera_hash('pia_domain_list')
+diff -r modules\pt_profile\manifests\pt_password.pp modules\pt_profile\manifests\pt_password.pp
+50c50
+<     $pia_domain_list   = hiera('pia_domain_list', [{'site_list' => 'none'}])
+---
+>     $pia_domain_list   = hiera_hash('pia_domain_list', [{'site_list' => 'none'}])
+diff -r modules\pt_profile\manifests\pt_pia.pp modules\pt_profile\manifests\pt_pia.pp
+59c59
+<     $tns_admin_list = hiera('tns_admin_list')
+---
+>     $tns_admin_list = hiera_hash('tns_admin_list')
+80c80
+<   $pia_domain_list = hiera('pia_domain_list')
+---
+>   $pia_domain_list = hiera_hash('pia_domain_list')
+diff -r modules\pt_profile\manifests\pt_prcs.pp modules\pt_profile\manifests\pt_prcs.pp
+61c61
+<   $prcs_domain_list = hiera('prcs_domain_list')
+---
+>   $prcs_domain_list = hiera_hash('prcs_domain_list')
+diff -r modules\pt_profile\manifests\pt_tns_admin.pp modules\pt_profile\manifests\pt_tns_admin.pp
+50c50
+<   $tns_admin_list = hiera('tns_admin_list')
+---
+>   $tns_admin_list = hiera_hash('tns_admin_list')
+diff -r modules\pt_profile\manifests\pt_tools_deployment.pp modules\pt_profile\manifests\pt_tools_deployment.pp
+145c145,152
+<   $redeploy = hiera('redeploy', false)
+---
+>   $redeploy               = hiera('redeploy', false)
+>   $pshome_redeploy        = hiera('pshome_redeploy', false)
+>   $oracleclient_redeploy  = hiera('oracleclient_redeploy', false)
+>   $jdk_redeploy           = hiera('jdk_redeploy', false)
+>   $weblogic_redeploy      = hiera('weblogic_redeploy', false)
+>   $tuxedo_redeploy        = hiera('tuxedo_redeploy', false)
+>   $ohs_redeploy           = hiera('ohs_redeploy', false)
+> 
+156a164
+>     pshome_redeploy        => $pshome_redeploy,
+159a168
+>     oracleclient_redeploy  => $oracleclient_redeploy,
+161a171
+>     jdk_redeploy           => $jdk_redeploy,
+163a174
+>     weblogic_redeploy      => $weblogic_redeploy,
+165a177
+>     tuxedo_redeploy        => $tuxedo_redeploy,
+167a180
+>     ohs_redeploy           => $ohs_redeploy,
+diff -r modules\pt_profile\manifests\pt_tools_postboot_config.pp modules\pt_profile\manifests\pt_tools_postboot_config.pp
+35c35
+<     $component_setup_list      = hiera('component_postboot_setup_list')
+---
+>     $component_setup_list      = hiera_hash('component_postboot_setup_list')
+38c38
+<     $component_setup_order       = hiera('component_postboot_setup_order', '')
+---
+>     $component_setup_order       = hiera_hash('component_postboot_setup_order', '')
+diff -r modules\pt_profile\manifests\pt_tools_preboot_config.pp modules\pt_profile\manifests\pt_tools_preboot_config.pp
+36c36
+<     $component_setup_list      = hiera('component_preboot_setup_list')
+---
+>     $component_setup_list      = hiera_hash('component_preboot_setup_list', '')
+39c39
+<     $component_setup_order       = hiera('component_preboot_setup_order', '')
+---
+>     $component_setup_order       = hiera_array('component_preboot_setup_order', '')
+diff -r modules\pt_setup\manifests\app_deployment.pp modules\pt_setup\manifests\app_deployment.pp
+50c50,56
+<     $ps_apphome_archive_file = get_matched_file($app_archive_location, $ps_apphome_tag)
+---
+>       $archive_files = hiera('archive_files', '')
+>       if $archive_files {
+>         $ps_apphome_archive_file = $archive_files[$ps_apphome_tag]
+>       } 
+>       if $ps_apphome_archive_file == '' {
+>         $ps_apphome_archive_file = get_matched_file($app_archive_location, $ps_apphome_tag)
+>       }
+52c58
+<         fail("Unable to locate archive (tgz) file for PS_APP_HOME in ${app_archive_location}")
+---
+>           fail("Unable to locate archive (tgz) file for PS_APP_HOME in ${app_archive_location}")
+53a60,61
+>       
+>       
+56,57c64,65
+<   $ps_apphome_extract_only_hiera = $ps_apphome_hiera['extract_only']
+<   $apphome_extract_only = str2bool($ps_apphome_extract_only_hiera)
+---
+>     $ps_apphome_extract_only_hiera = $ps_apphome_hiera['extract_only']
+>     $apphome_extract_only = str2bool($ps_apphome_extract_only_hiera)
+diff -r modules\pt_setup\manifests\tools_deployment.pp modules\pt_setup\manifests\tools_deployment.pp
+17c17
+<  *  Copyright (C) 1988, 2018, Oracle and/or its affiliates.
+---
+>  *  Copyright (C) 1988, 2017, Oracle and/or its affiliates.
+31a32
+>   $pshome_redeploy        = false,
+34a36
+>   $oracleclient_redeploy  = false,
+36a39
+>   $jdk_redeploy           = false,
+38a42
+>   $weblogic_redeploy      = false,
+40a45
+>   $tuxedo_redeploy        = false,
+42a48
+>   $ohs_redeploy           = false,
+54a61,62
+>     $archive_files = hiera('archive_files', '')
+> 
+67c75,81
+<       $pshome_archive_file = get_matched_file($tools_archive_location, $pshome_tag)
+---
+> 
+>       if $archive_files {
+>         $pshome_archive_file   = $archive_files[$pshome_tag]
+>       } 
+>       if $pshome_archive_file == '' {
+>       	$pshome_archive_file = get_matched_file($tools_archive_location, $pshome_tag)
+>       }
+70a85
+>     
+73a89
+> 
+75c91,96
+<           $jdk_archive_file = get_matched_file($tools_archive_location, $jdk_tag)
+---
+>           if $archive_files {
+>             $jdk_archive_file   = $archive_files[$jdk_tag]
+>           } 
+>           if $jdk_archive_file == '' {
+>             $jdk_archive_file   = get_matched_file($tools_archive_location, $jdk_tag)
+>           }
+78a100
+>           
+80,81c102,107
+<         
+<         $weblogic_archive_file = get_matched_file($tools_archive_location,
+---
+> 		
+>         if $archive_files {
+>           $weblogic_archive_file   = $archive_files[$weblogic_tag]
+>         } 
+>         if $weblogic_archive_file == '' {
+>           $weblogic_archive_file = get_matched_file($tools_archive_location,
+82a109
+>         }
+86c113,118
+<         $tuxedo_archive_file   = get_matched_file($tools_archive_location,
+---
+> 
+>         if $archive_files {
+>           $tuxedo_archive_file   = $archive_files[$tuxedo_tag]
+>         }
+>         if $tuxedo_archive_file == '' {
+>           $tuxedo_archive_file   = get_matched_file($tools_archive_location,
+87a120
+>         }
+97c130,134
+<           $oracleclient_archive_file = get_matched_file($tools_archive_location,
+---
+>           if $archive_files {
+>             $oracleclient_archive_file   = $archive_files[$oracleclient_tag]
+>           } 
+>           if $oracleclient_archive_file == '' {
+>             $oracleclient_archive_file = get_matched_file($tools_archive_location,
+98a136
+>           }
+111a150,154
+>         if ($redeploy == 'true') or ($oracleclient_redeploy == 'true') {
+>           $oc_redeploy = true
+>         } else {
+>           $oc_redeploy = false
+>         }
+121c164
+<           redeploy                  => $redeploy,
+---
+>           redeploy                  => $oc_redeploy,
+148a192,196
+>     if ($redeploy == 'true') or ($pshome_redeploy == 'true') {
+>       $pt_redeploy = true
+>     } else {
+>       $pt_redeploy = false
+>     }
+159c207
+<       redeploy          => $redeploy,
+---
+>       redeploy          => $pt_redeploy,
+180a229,233
+>         if ($redeploy == 'true') or ($jdk_redeploy == 'true') {
+>           $java_redeploy = true
+>         } else {
+>           $java_redeploy = false
+>         }
+187c240
+<           redeploy          => $redeploy,
+---
+>           redeploy          => $java_redeploy,
+202a256,267
+>       # DJI Skip WebLogic install on prcs boxes
+>       case $facts[ps_role] {
+>         'prcs': { $wl_ensure = absent }
+>         default: { $wl_ensure = present }
+>       }
+> 
+>       if ($redeploy == 'true') or ($weblogic_redeploy == 'true') {
+>         $wl_redeploy = true
+>       } else {
+>         $wl_redeploy = false
+>       }
+> 
+204c269
+<         ensure                    => $ensure,
+---
+>         ensure                    => $wl_ensure,
+213c278
+<         redeploy                  => $redeploy,
+---
+>         redeploy                  => $wl_redeploy,
+227a293,299
+> 
+>       if ($redeploy == 'true') or ($tuxedo_redeploy == 'true') {
+>         $tux_redeploy = true
+>       } else {
+>         $tux_redeploy = false
+>       }
+> 
+237c309
+<         redeploy                  => $redeploy,
+---
+>         redeploy                  => $tux_redeploy,
+253a326,332
+> 
+>         if ($redeploy == 'true') or ($ohs_redeploy == 'true') {
+>           $http_redeploy = true
+>         } else {
+>           $http_redeploy = false
+>         }
+> 
+264c343
+<           redeploy                  => $redeploy,
+---
+>           redeploy                  => $http_redeploy,
